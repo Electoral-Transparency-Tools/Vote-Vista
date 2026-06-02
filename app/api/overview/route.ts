@@ -6,7 +6,7 @@ import { formatINR } from "@/lib/format";
 export const runtime = "nodejs";
 
 export async function POST() {
-  const file = getCandidatesFile();
+  const file = await getCandidatesFile();
   const contenders = file.candidates
     .filter((c) => c.party_short !== "NOTA")
     .sort((a, b) => b.votes - a.votes)

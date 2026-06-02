@@ -7,7 +7,7 @@ import {
 } from "@/lib/data";
 import { generateText } from "@/lib/ai";
 import { webSearch, normalizeUrl, type SearchResult } from "@/lib/search";
-import type { ResearchReport } from "@/lib/types";
+import type { ResearchReport, MlaNews, WinningParty } from "@/lib/types";
 
 export const runtime = "nodejs";
 // The research agent can take a while; allow more time on platforms that honour it.
@@ -31,9 +31,7 @@ function relevanceTerms(mla: string, constituency: string): string[] {
   return [...new Set([...nameTokens, constToken])];
 }
 
-function fallbackReport(): ResearchReport {
-  const news = getMlaNews();
-  const party = getWinningParty();
+function fallbackReport(news: MlaNews, party: WinningParty): ResearchReport {
   const work = news.articles.filter((a) =>
     ["profile/positive", "profile/record"].includes(a.category),
   );
@@ -73,8 +71,7 @@ function fallbackReport(): ResearchReport {
 }
 
 export async function POST() {
-  const news = getMlaNews();
-  const party = getWinningParty();
+  const [news, party] = await Promise.all([getMlaNews(), getWinningParty()]);
   const mla = party.winning_candidate;
   const constituency = "C.V. Raman Nagar";
   const district = "Bengaluru, Karnataka";
@@ -124,10 +121,15 @@ export async function POST() {
         .join("\n")}`
     : "";
 
+  const [affidavit, manifesto] = await Promise.all([
+    getAffidavitText(),
+    getManifestoText(),
+  ]);
+
   try {
     const llm = await generateText(
       "You are an investigative but strictly neutral civic-research analyst. Using ONLY the provided sources, produce a JSON object with keys: workSummary, integrityScan, promiseVsResult. Be factual, cite the nature of allegations as allegations (not facts), prefer the freshest LIVE_WEB_SEARCH items where available, and never fabricate. Keep each field to a short paragraph.",
-      `SOURCES:\n\nCURATED_NEWS:\n${JSON.stringify(news, null, 2)}\n\nAFFIDAVIT:\n${getAffidavitText()}\n\nMANIFESTO:\n${getManifestoText()}${liveBlock}\n\nReturn ONLY valid JSON.`,
+      `SOURCES:\n\nCURATED_NEWS:\n${JSON.stringify(news, null, 2)}\n\nAFFIDAVIT:\n${affidavit}\n\nMANIFESTO:\n${manifesto}${liveBlock}\n\nReturn ONLY valid JSON.`,
     );
     if (llm) {
       let parsed: Partial<ResearchReport> = {};
@@ -150,13 +152,13 @@ export async function POST() {
       return NextResponse.json(report);
     }
   } catch (err) {
-    const report = fallbackReport();
+    const report = fallbackReport(news, party);
     report.generatedBy = `fallback (LLM error: ${String(err)})`;
     report.sources = sources;
     return NextResponse.json(report);
   }
 
-  const report = fallbackReport();
+  const report = fallbackReport(news, party);
   report.sources = sources;
   return NextResponse.json(report);
 }

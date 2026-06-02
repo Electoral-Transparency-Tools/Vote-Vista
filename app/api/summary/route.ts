@@ -26,7 +26,7 @@ function fallbackSummary(c: Candidate): string {
 
 export async function POST(req: Request) {
   const { name } = await req.json().catch(() => ({ name: "" }));
-  const file = getCandidatesFile();
+  const file = await getCandidatesFile();
   const candidate = file.candidates.find((c) => c.name === name);
   if (!candidate) {
     return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     assets_readable: formatINR(candidate.assets_total_inr),
     liabilities_readable: formatINR(candidate.liabilities_inr),
   };
-  const extraContext = candidate.is_seat_winner ? getAffidavitText() : "";
+  const extraContext = candidate.is_seat_winner ? await getAffidavitText() : "";
 
   try {
     const llm = await generateText(
