@@ -13,6 +13,24 @@ export const runtime = "nodejs";
 // The research agent can take a while; allow more time on platforms that honour it.
 export const maxDuration = 60;
 
+/**
+ * Distinctive lowercase tokens used to confirm a search result is actually
+ * about this MLA / constituency. Drops initials (e.g. "S.") and uses the
+ * surname plus the constituency name (minus the "C.V." style prefix).
+ */
+function relevanceTerms(mla: string, constituency: string): string[] {
+  const nameTokens = mla
+    .split(/\s+/)
+    .map((t) => t.replace(/\.$/, ""))
+    .filter((t) => t.length > 2)
+    .map((t) => t.toLowerCase());
+  const lowerConst = constituency.toLowerCase();
+  const constToken = lowerConst.includes("raman nagar")
+    ? "raman nagar"
+    : lowerConst;
+  return [...new Set([...nameTokens, constToken])];
+}
+
 function fallbackReport(): ResearchReport {
   const news = getMlaNews();
   const party = getWinningParty();
@@ -59,21 +77,35 @@ export async function POST() {
   const party = getWinningParty();
   const mla = party.winning_candidate;
   const constituency = "C.V. Raman Nagar";
+  const district = "Bengaluru, Karnataka";
 
   // Feature 5 upgrade: live web search (Tavily) when configured.
   let live: SearchResult[] = [];
   let searchProvider = "";
   try {
-    const search = await webSearch([
-      `${mla} MLA ${constituency} development work fund`,
-      `${mla} MLA ${constituency} corruption scam allegation controversy`,
-    ]);
+    // Anchor queries with the quoted name + constituency + city so the
+    // (mostly local) MLA isn't drowned out by generic national news.
+    const search = await webSearch(
+      [
+        `"${mla}" MLA "${constituency}" ${district} development work projects funds`,
+        `"${mla}" MLA "${constituency}" ${district} corruption OR scam OR allegation OR controversy`,
+      ],
+      { topic: "general", searchDepth: "advanced", maxResultsPerQuery: 8, minScore: 0.4 },
+    );
     if (search) {
-      live = search.results;
       searchProvider = search.provider;
+      // Relevance guard: keep only results that actually mention this MLA or
+      // constituency (drops off-topic national news the search may return).
+      const terms = relevanceTerms(mla, constituency);
+      live = search.results
+        .filter((r) => {
+          const hay = `${r.title} ${r.content}`.toLowerCase();
+          return terms.some((t) => hay.includes(t));
+        })
+        .slice(0, 6);
     }
   } catch {
-    // Search failed; continue with curated sources only.
+    // Search failed (e.g. network/TLS); continue with curated sources only.
   }
 
   // Merge curated + live sources for citation (dedupe by URL).

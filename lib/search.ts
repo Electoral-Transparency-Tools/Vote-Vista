@@ -4,6 +4,7 @@ export interface SearchResult {
   title: string;
   url: string;
   content: string;
+  score: number;
   publishedDate?: string;
 }
 
@@ -12,18 +13,21 @@ export interface WebSearchResponse {
   provider: string;
 }
 
+export interface WebSearchOptions {
+  maxResultsPerQuery?: number;
+  searchDepth?: "basic" | "advanced";
+  topic?: "general" | "news";
+  /** Drop results below this Tavily relevance score (0-1). */
+  minScore?: number;
+}
+
 export function searchConfigured(): boolean {
   return Boolean(process.env.TAVILY_API_KEY);
 }
 
-/**
- * Run one Tavily query. Returns cleaned results ready for an LLM.
- * Returns null when no TAVILY_API_KEY is set, so callers fall back to
- * the curated source files.
- */
 async function tavilyQuery(
   query: string,
-  maxResults: number,
+  opts: Required<Pick<WebSearchOptions, "maxResultsPerQuery" | "searchDepth" | "topic">>,
 ): Promise<SearchResult[]> {
   const key = process.env.TAVILY_API_KEY!;
   const res = await fetch("https://api.tavily.com/search", {
@@ -34,9 +38,9 @@ async function tavilyQuery(
     },
     body: JSON.stringify({
       query,
-      topic: "news",
-      search_depth: "basic",
-      max_results: maxResults,
+      topic: opts.topic,
+      search_depth: opts.searchDepth,
+      max_results: opts.maxResultsPerQuery,
       include_answer: false,
     }),
   });
@@ -45,35 +49,55 @@ async function tavilyQuery(
   }
   const data = await res.json();
   return (data.results ?? []).map(
-    (r: { title?: string; url?: string; content?: string; published_date?: string }) => ({
+    (r: {
+      title?: string;
+      url?: string;
+      content?: string;
+      score?: number;
+      published_date?: string;
+    }) => ({
       title: r.title ?? "",
       url: r.url ?? "",
       content: r.content ?? "",
+      score: typeof r.score === "number" ? r.score : 0,
       publishedDate: r.published_date,
     }),
   );
 }
 
 /**
- * Run multiple queries and merge/dedupe results by URL.
- * Returns null if search is not configured.
+ * Run multiple queries, merge/dedupe by URL (keeping the highest score),
+ * drop low-relevance hits, and sort by score. Returns null if not configured.
  */
 export async function webSearch(
   queries: string[],
-  maxResultsPerQuery = 5,
+  opts: WebSearchOptions = {},
 ): Promise<WebSearchResponse | null> {
   if (!searchConfigured()) return null;
 
+  const resolved = {
+    maxResultsPerQuery: opts.maxResultsPerQuery ?? 8,
+    searchDepth: opts.searchDepth ?? "advanced",
+    topic: opts.topic ?? "general",
+  } as const;
+  const minScore = opts.minScore ?? 0;
+
   const batches = await Promise.all(
-    queries.map((q) => tavilyQuery(q, maxResultsPerQuery)),
+    queries.map((q) => tavilyQuery(q, resolved)),
   );
 
   const byUrl = new Map<string, SearchResult>();
   for (const batch of batches) {
     for (const r of batch) {
-      if (r.url && !byUrl.has(r.url)) byUrl.set(r.url, r);
+      if (!r.url) continue;
+      const existing = byUrl.get(r.url);
+      if (!existing || r.score > existing.score) byUrl.set(r.url, r);
     }
   }
 
-  return { results: [...byUrl.values()], provider: "tavily" };
+  const results = [...byUrl.values()]
+    .filter((r) => r.score >= minScore)
+    .sort((a, b) => b.score - a.score);
+
+  return { results, provider: "tavily" };
 }
