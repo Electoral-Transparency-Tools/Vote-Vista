@@ -50,7 +50,7 @@ OpenAI-compatible endpoint, it works with the existing code via env vars:
 ```bash
 OPENAI_API_KEY=<your-gemini-key>
 OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-OPENAI_MODEL=gemini-2.0-flash-lite
+OPENAI_MODEL=gemini-2.5-flash-lite
 ```
 Alternatively set `OPENAI_API_KEY` (OpenAI) or `ANTHROPIC_API_KEY` (Anthropic) directly.
 
