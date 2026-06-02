@@ -1,0 +1,30 @@
+{
+  "poc_location": {
+    "label": "Nivriti Nilaya (user's house)",
+    "google_maps": "https://maps.app.goo.gl/qJVCZeVQvx3V4Scy8",
+    "lat": 12.9684577,
+    "lon": 77.6387454
+  },
+  "boundary_check": {
+    "method": "point-in-polygon against LGD Assembly Constituency boundaries (Karnataka)",
+    "source": "yashveeeeeeer/india-geodata (LGD_Assembly_Constituencies), CC0/CC-BY",
+    "constituency_containing_house": {
+      "ac_no": 163,
+      "ac_name": "Shanti Nagar",
+      "pc_name": "Bangalore Central"
+    },
+    "user_confirmed_constituency": {
+      "ac_no": 161,
+      "ac_name": "C.V. Raman Nagar (SC)",
+      "pc_name": "Bangalore Central",
+      "note": "House is ~700m OUTSIDE this polygon's southern edge."
+    },
+    "nearby_constituencies_by_bbox": [
+      "161 C.V. Raman Nagar (SC)",
+      "163 Shanti Nagar",
+      "174 Mahadevapura"
+    ],
+    "caveat": "LGD polygons are simplified (CV Raman Nagar outer ring = 71 vertices). The house sits near the CV Raman Nagar / Shanti Nagar / Mahadevapura junction. VERIFY on the ECI Voter Services portal (https://voters.eci.gov.in) before finalising the POC constituency.",
+    "current_dataset_targets": "C.V. Raman Nagar (AC 161) - per user's explicit confirmation. Data in candidates.json / winning_party.json / sources/ describe AC 161, NOT AC 163."
+  }
+}

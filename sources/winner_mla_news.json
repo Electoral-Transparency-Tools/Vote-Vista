@@ -1,0 +1,40 @@
+{
+  "subject": "S. Raghu (BJP), MLA C.V. Raman Nagar (SC)",
+  "purpose": "Source material for Feature 5 (AI research agent): work done + scam/corruption scan over recent years.",
+  "collected_on": "2026-06-02",
+  "articles": [
+    {
+      "title": "Bengaluru BJP MLA Raghu accused of running vaccination camp by diverting govt stock",
+      "publisher": "The News Minute",
+      "date": "2021-06",
+      "url": "https://www.thenewsminute.com/karnataka/bengaluru-bjp-mla-raghu-allegedly-runs-vaccination-camp-diverting-govt-stocks-149862",
+      "category": "controversy/corruption-allegation",
+      "summary": "During COVID-19, a vaccination drive at Bhuvaneshwari Nagar PHC (May 31, 2021) was allegedly cancelled at the behest of MLA S. Raghu - though ~300 people had been given tokens. Residents alleged the drive was instead held at Om Shakti Kalyana Mantapa (run by the MLA) under a banner crediting 'free vaccination by MLA Raghu', and that doses went mainly to party cadres and their families. AAP's Bengaluru president Mohan Dasari (later a 2023 rival candidate) and a Youth Congress functionary criticised the diversion. The MLA and BBMP officials could not be reached for comment.",
+      "verification": "single-source allegation; not adjudicated"
+    },
+    {
+      "title": "For C V Raman Nagar's 5-time MLA Raghu, selfless service is a way of life",
+      "publisher": "Tarmak007 (Anantha Krishnan M, columnist) - Facebook",
+      "date": "2024-2025",
+      "url": "https://www.facebook.com/Tarmak007/posts/910878891247114/",
+      "category": "profile/positive",
+      "summary": "Profile noting Raghu started as a 28-year-old BJP corporator (1998), became MLA in 2004, and has won every election since (2008, 2013, 2018, 2023) - his fifth term. Highlights a people-first, hands-on style and continued win even during BJP's poor statewide 2023 showing. Mentions a planned 2025 initiative leveraging CV Raman Nagar's aerospace/defence heritage (DRDO labs, HAL, BEML, ISRO centres, IAF units) to inspire youth.",
+      "verification": "opinion/profile piece"
+    },
+    {
+      "title": "S. Raghu - MLA from C.V. Raman Nagar (SC) (161)",
+      "publisher": "elections.in",
+      "date": "2023-01",
+      "url": "https://www.elections.in/karnataka/mla/s.-raghu.html",
+      "category": "profile/record",
+      "summary": "Record page: current MLA from CV Raman Nagar, BJP. In 2018 defeated R. Sampath Raj (Congress) by ~10,000 votes. Address: 'Raghu Nilaya', New Thippasandra, Bengaluru-560075.",
+      "verification": "directory listing"
+    }
+  ],
+  "gaps_to_fill_by_agent": [
+    "Constituency-level development work / fund utilisation (MLA LAD) over the 2023-2028 term",
+    "Any vigilance/Lokayukta/ACB proceedings (none found in this initial scan)",
+    "Status/outcome of the 2021 vaccine-diversion allegation",
+    "Promise-vs-result: compare against BJP 2023 manifesto (see winner_party_manifesto_2023.txt)"
+  ]
+}
