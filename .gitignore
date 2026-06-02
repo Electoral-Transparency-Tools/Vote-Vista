@@ -29,3 +29,9 @@ yarn-error.log*
 .DS_Store
 *.pem
 coverage
+
+# Gathered data now lives in the Neon database (the source of truth).
+# These files are kept locally only, as inputs for `npm run db:seed`.
+/data/*
+!/data/location_meta.json
+/sources/

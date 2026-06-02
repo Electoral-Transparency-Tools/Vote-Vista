@@ -77,8 +77,19 @@ app/
   api/overview/route.ts    # top-candidates overview
   api/research/route.ts    # MLA research agent
 components/                # Portal, MapView, CandidateDetail, ResearchPanel
-lib/                       # data loaders, AI provider, formatters, types
+lib/                       # data loaders, db client, AI provider, search, types
+db/schema.sql              # Postgres + PostGIS schema
+scripts/seed.mjs           # applies schema + loads data into the DB
 ```
+
+### Data store
+The gathered electoral data lives in a **Neon Postgres (PostGIS)** database — the
+source of truth. Set `DATABASE_URL` and run `npm run db:seed` to populate it.
+If `DATABASE_URL` is unset, the app falls back to local JSON/text files (see below).
+
+> The raw `data/` and `sources/` files are **not committed** (they are local
+> inputs for `npm run db:seed`); only `data/location_meta.json` (app config) is
+> tracked. Re-create the DB any time with `npm run db:seed`.
 
 ---
 

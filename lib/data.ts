@@ -2,6 +2,9 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { sql, dbConfigured } from "./db";
+// House coordinates are app config (not gathered electoral data and not in the
+// DB), so they are bundled at build time rather than read from disk at runtime.
+import locationMeta from "@/data/location_meta.json";
 import type {
   CandidatesFile,
   ConstituencyMeta,
@@ -186,8 +189,7 @@ export function getManifestoText(): Promise<string> {
   return getSourceBody("manifesto", "sources/winner_party_manifesto_2023.txt");
 }
 
-// Location metadata is app config (house coords), not gathered electoral
-// data, so it stays file-based.
+// Location metadata is app config (house coords), bundled at build time.
 export function getLocationMeta(): LocationMeta {
-  return readJson<LocationMeta>("data/location_meta.json");
+  return locationMeta as LocationMeta;
 }
