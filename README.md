@@ -20,7 +20,8 @@ constituency in East Bengaluru.
 - **🤖 AI overview of top candidates** — a balanced, on-demand summary of the leading contenders.
 - **🔍 MLA research agent** — on demand, scans the gathered sources (news, affidavit,
   manifesto) and returns a structured report: **work done · integrity/corruption scan ·
-  promise-vs-result comparison**, with citations.
+  promise-vs-result comparison**, with citations. With a `TAVILY_API_KEY` set, it also
+  pulls **live web/news results** and prefers the freshest items.
 
 > All AI features run **out of the box with no API key** via a deterministic,
 > data-driven fallback. Add an API key (below) for live LLM-generated output.
@@ -53,6 +54,10 @@ OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
 OPENAI_MODEL=gemini-2.5-flash-lite
 ```
 Alternatively set `OPENAI_API_KEY` (OpenAI) or `ANTHROPIC_API_KEY` (Anthropic) directly.
+
+**Optional — live web search for the research agent (Feature 5):** set a
+`TAVILY_API_KEY` (free tier: 1,000 searches/month at https://app.tavily.com).
+Without it, the research agent falls back to the curated files in `sources/`.
 
 ### Generating a Gemini API token
 1. Go to **Google AI Studio** → https://aistudio.google.com/apikey
