@@ -25,6 +25,23 @@ export function searchConfigured(): boolean {
   return Boolean(process.env.TAVILY_API_KEY);
 }
 
+/**
+ * Canonical key for deduping URLs that point to the same page, e.g.
+ * http vs https, "www." vs not, and trailing slashes. Query strings are
+ * kept (they often identify the page, e.g. ?candidate_id=7163); fragments
+ * are dropped. Falls back to the lowercased input if parsing fails.
+ */
+export function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url.trim());
+    const host = u.host.toLowerCase().replace(/^www\./, "");
+    const path = u.pathname.replace(/\/+$/, "") || "/";
+    return `${host}${path}${u.search}`;
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
 async function tavilyQuery(
   query: string,
   opts: Required<Pick<WebSearchOptions, "maxResultsPerQuery" | "searchDepth" | "topic">>,
@@ -90,8 +107,9 @@ export async function webSearch(
   for (const batch of batches) {
     for (const r of batch) {
       if (!r.url) continue;
-      const existing = byUrl.get(r.url);
-      if (!existing || r.score > existing.score) byUrl.set(r.url, r);
+      const key = normalizeUrl(r.url);
+      const existing = byUrl.get(key);
+      if (!existing || r.score > existing.score) byUrl.set(key, r);
     }
   }
 

@@ -6,7 +6,7 @@ import {
   getWinningParty,
 } from "@/lib/data";
 import { generateText } from "@/lib/ai";
-import { webSearch, type SearchResult } from "@/lib/search";
+import { webSearch, normalizeUrl, type SearchResult } from "@/lib/search";
 import type { ResearchReport } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -108,10 +108,14 @@ export async function POST() {
     // Search failed (e.g. network/TLS); continue with curated sources only.
   }
 
-  // Merge curated + live sources for citation (dedupe by URL).
+  // Merge curated + live sources for citation (dedupe by normalized URL).
   const sourceMap = new Map<string, { title: string; url: string }>();
-  for (const a of news.articles) sourceMap.set(a.url, { title: a.title, url: a.url });
-  for (const r of live) if (r.url) sourceMap.set(r.url, { title: r.title, url: r.url });
+  for (const a of news.articles) {
+    sourceMap.set(normalizeUrl(a.url), { title: a.title, url: a.url });
+  }
+  for (const r of live) {
+    if (r.url) sourceMap.set(normalizeUrl(r.url), { title: r.title, url: r.url });
+  }
   const sources = [...sourceMap.values()];
 
   const liveBlock = live.length
