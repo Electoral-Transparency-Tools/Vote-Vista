@@ -13,8 +13,8 @@ function LinkRow({ label, url }: { label: string; url: string }) {
       rel="noopener noreferrer"
       className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
         disabled
-          ? "cursor-not-allowed border-slate-200 text-slate-400"
-          : "border-slate-200 text-brand hover:border-brand hover:bg-blue-50"
+          ? "cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-600"
+          : "border-slate-200 text-brand hover:border-brand hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-slate-700"
       }`}
     >
       <span>{label}</span>
@@ -59,7 +59,7 @@ export default function CandidateDetail({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl scrollbar-thin"
+        className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl scrollbar-thin dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -97,8 +97,8 @@ export default function CandidateDetail({
           <div
             className={`rounded-lg p-3 text-sm ${
               candidate.criminal_cases_count > 0
-                ? "bg-red-50 text-red-800"
-                : "bg-green-50 text-green-800"
+                ? "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300"
+                : "bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-300"
             }`}
           >
             <strong>
@@ -134,7 +134,7 @@ export default function CandidateDetail({
               </button>
             </div>
             {summary ? (
-              <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
+              <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 dark:bg-slate-700/50 dark:text-slate-200">
                 {summary}
                 {source && (
                   <p className="mt-2 text-[11px] text-slate-400">
@@ -157,11 +157,11 @@ export default function CandidateDetail({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-2">
+    <div className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
       <div className="text-[11px] uppercase tracking-wide text-slate-400">
         {label}
       </div>
-      <div className="font-semibold text-slate-800">{value}</div>
+      <div className="font-semibold text-slate-800 dark:text-slate-100">{value}</div>
     </div>
   );
 }

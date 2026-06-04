@@ -32,20 +32,20 @@ export default function ResearchPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl scrollbar-thin"
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl scrollbar-thin dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 p-5">
+        <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-700">
           <div>
             <h2 className="text-lg font-bold">MLA Research Agent</h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Scans gathered sources for the MLA&apos;s work, integrity flags, and
               promise-vs-result.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full bg-slate-100 px-3 py-1 text-lg leading-none hover:bg-slate-200"
+            className="rounded-full bg-slate-100 px-3 py-1 text-lg leading-none hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600"
             aria-label="Close"
           >
             ×
@@ -107,7 +107,7 @@ export default function ResearchPanel({
               </p>
               <button
                 onClick={() => run(true)}
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
               >
                 Regenerate
               </button>
@@ -132,12 +132,12 @@ function Section({
     <div
       className={`rounded-xl border p-4 ${
         tone === "warn"
-          ? "border-amber-200 bg-amber-50"
-          : "border-slate-200 bg-slate-50"
+          ? "border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30"
+          : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/40"
       }`}
     >
-      <h3 className="mb-1 text-sm font-semibold text-slate-700">{title}</h3>
-      <p className="text-sm leading-relaxed text-slate-600">{body || "—"}</p>
+      <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</h3>
+      <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{body || "—"}</p>
     </div>
   );
 }

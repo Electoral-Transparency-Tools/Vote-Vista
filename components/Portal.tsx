@@ -6,6 +6,7 @@ import type { Candidate, ConstituencyMeta, LocationMeta } from "@/lib/types";
 import { formatINR, partyColor } from "@/lib/format";
 import CandidateDetail from "./CandidateDetail";
 import ResearchPanel from "./ResearchPanel";
+import ThemeToggle from "./ThemeToggle";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -140,12 +141,12 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 shadow-sm">
+      <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div>
           <h1 className="text-lg font-extrabold tracking-tight">
             Vote<span className="text-brand">Vista</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {constituency.ac_name} · {constituency.pc_name || "Bengaluru"} · 2023 Assembly
           </p>
         </div>
@@ -164,11 +165,12 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
           >
             🔍 Research the MLA
           </button>
+          <ThemeToggle />
         </div>
       </header>
 
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[420px_1fr]">
-        <aside className="relative flex flex-col overflow-y-auto border-r border-slate-200 bg-white scrollbar-thin">
+        <aside className="relative flex flex-col overflow-y-auto border-r border-slate-200 bg-white scrollbar-thin dark:border-slate-700 dark:bg-slate-800">
           {loading && (
             <div className="absolute inset-x-0 top-0 z-20 bg-brand/90 py-1 text-center text-xs font-medium text-white">
               Loading constituency…
@@ -176,31 +178,31 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
           )}
           <ConstituencyStats constituency={constituency} />
 
-          <div className="border-b border-slate-200 p-4">
+          <div className="border-b border-slate-200 p-4 dark:border-slate-700">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">
+              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 AI overview · top candidates
               </h2>
               <button
                 onClick={() => loadOverview(overview !== "")}
                 disabled={overviewLoading}
-                className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
               >
                 {overviewLoading ? "…" : overview ? "Regenerate" : "Generate"}
               </button>
             </div>
             {overview && (
-              <p className="mt-2 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+              <p className="mt-2 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
                 {overview}
               </p>
             )}
           </div>
 
           <div className="flex items-center justify-between px-4 pt-4">
-            <h2 className="text-sm font-semibold text-slate-700">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Candidates ({candidates.length})
             </h2>
-            <label className="flex items-center gap-1.5 text-xs text-slate-500">
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <input
                 type="checkbox"
                 checked={highlightWinner}
@@ -224,7 +226,7 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
                   className={`w-full rounded-xl border p-3 text-left transition hover:shadow-md ${
                     c.is_seat_winner && highlightWinner
                       ? "border-brand ring-2 ring-brand/30"
-                      : "border-slate-200"
+                      : "border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -233,18 +235,18 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
                         className="h-3 w-3 rounded-full"
                         style={{ background: partyColor(c.party_short) }}
                       />
-                      <span className="font-semibold text-slate-800">{c.name}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">{c.name}</span>
                       {c.is_seat_winner && (
                         <span className="rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700">
                           ★ WINNER
                         </span>
                       )}
                     </div>
-                    <span className="text-xs font-medium text-slate-500">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                       {c.vote_share_pct ? `${c.vote_share_pct}%` : "—"}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                  <div className="mt-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>{c.party_short}</span>
                     <span>
                       {c.votes ? `${c.votes.toLocaleString("en-IN")} votes` : "votes n/a"} ·{" "}
@@ -269,7 +271,7 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
             onSelect={selectAc}
             focusPoint={focusPoint}
           />
-          <div className="pointer-events-none absolute bottom-6 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 shadow">
+          <div className="pointer-events-none absolute bottom-6 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 shadow dark:bg-slate-800/90 dark:text-slate-300">
             Hover for a name · click a constituency to view its candidates
           </div>
         </main>
@@ -298,13 +300,17 @@ function ConstituencyStats({ constituency }: { constituency: ConstituencyMeta })
     { label: "Reservation", value: constituency.reservation || "General" },
   ];
   return (
-    <div className="border-b border-slate-200 p-4">
-      <h2 className="text-sm font-semibold text-slate-700">Constituency overview</h2>
+    <div className="border-b border-slate-200 p-4 dark:border-slate-700">
+      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        Constituency overview
+      </h2>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {items.map((i) => (
-          <div key={i.label} className="rounded-lg bg-slate-50 p-2">
+          <div key={i.label} className="rounded-lg bg-slate-50 p-2 dark:bg-slate-700/50">
             <div className="text-[11px] uppercase tracking-wide text-slate-400">{i.label}</div>
-            <div className="text-sm font-semibold text-slate-800">{i.value}</div>
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {i.value}
+            </div>
           </div>
         ))}
       </div>
