@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Candidate, ConstituencyMeta, LocationMeta } from "@/lib/types";
 import { formatINR, partyColor } from "@/lib/format";
 import CandidateDetail from "./CandidateDetail";
@@ -23,13 +23,12 @@ interface Detail {
 }
 
 interface PortalProps {
-  geojson: GeoJSON.FeatureCollection;
   initialDetail: Detail;
   initialAc: number;
   location: LocationMeta;
 }
 
-export default function Portal({ geojson, initialDetail, initialAc, location }: PortalProps) {
+export default function Portal({ initialDetail, initialAc, location }: PortalProps) {
   const [selectedAc, setSelectedAc] = useState(initialAc);
   const [detail, setDetail] = useState<Detail>(initialDetail);
   const [loading, setLoading] = useState(false);
@@ -38,6 +37,11 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
   const [highlightWinner, setHighlightWinner] = useState(false);
   const [overview, setOverview] = useState("");
   const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // Cache fetched constituency details so re-selecting one doesn't refetch.
+  const detailCacheRef = useRef<Map<number, Detail>>(
+    new Map([[initialAc, initialDetail]]),
+  );
 
   const { constituency, candidates, winningParty } = detail;
 
@@ -54,13 +58,21 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
 
   async function selectAc(ac: number) {
     if (ac === selectedAc) return;
-    setLoading(true);
     setSelected(null);
     setOverview("");
+    const cached = detailCacheRef.current.get(ac);
+    if (cached) {
+      setDetail(cached);
+      setSelectedAc(ac);
+      return;
+    }
+    setLoading(true);
     try {
       const res = await fetch(`/api/constituency/${ac}`);
       if (res.ok) {
-        setDetail(await res.json());
+        const d: Detail = await res.json();
+        detailCacheRef.current.set(ac, d);
+        setDetail(d);
         setSelectedAc(ac);
       }
     } finally {
@@ -68,13 +80,13 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
     }
   }
 
-  async function loadOverview() {
+  async function loadOverview(force = false) {
     setOverviewLoading(true);
     try {
       const res = await fetch("/api/overview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ac: selectedAc }),
+        body: JSON.stringify({ ac: selectedAc, force }),
       });
       const data = await res.json();
       setOverview(data.overview ?? "");
@@ -127,11 +139,11 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
                 AI overview · top candidates
               </h2>
               <button
-                onClick={loadOverview}
+                onClick={() => loadOverview(overview !== "")}
                 disabled={overviewLoading}
                 className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
               >
-                {overviewLoading ? "…" : overview ? "Refresh" : "Generate"}
+                {overviewLoading ? "…" : overview ? "Regenerate" : "Generate"}
               </button>
             </div>
             {overview && (
@@ -208,18 +220,9 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
         </aside>
 
         <main className="relative min-h-[320px]">
-          <MapView
-            geojson={geojson}
-            house={{
-              lat: location.poc_location.lat,
-              lon: location.poc_location.lon,
-              label: location.poc_location.label,
-            }}
-            selectedAc={selectedAc}
-            onSelect={selectAc}
-          />
+          <MapView house={house} selectedAc={selectedAc} onSelect={selectAc} />
           <div className="pointer-events-none absolute bottom-6 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 shadow">
-            Click a constituency to view its candidates
+            Hover for a name · click a constituency to view its candidates
           </div>
         </main>
       </div>

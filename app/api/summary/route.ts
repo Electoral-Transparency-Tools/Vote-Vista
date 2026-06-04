@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConstituencyDetail, getAffidavitText } from "@/lib/data";
 import { generateText } from "@/lib/ai";
+import { getOrGenerateInsight } from "@/lib/insights";
 import { formatINR } from "@/lib/format";
 import type { Candidate } from "@/lib/types";
 
@@ -27,42 +28,49 @@ function fallbackSummary(c: Candidate, constituency: string): string {
 }
 
 export async function POST(req: Request) {
-  const { name, ac = 161 } = await req.json().catch(() => ({ name: "", ac: 161 }));
-  const detail = await getConstituencyDetail(Number(ac));
+  const { name, ac = 161, force = false } = await req
+    .json()
+    .catch(() => ({ name: "", ac: 161, force: false }));
+  const acNo = Number(ac);
+  const detail = await getConstituencyDetail(acNo);
   const candidate = detail?.candidates.find((c) => c.name === name);
   if (!detail || !candidate) {
     return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
   }
   const constituency = detail.constituency.ac_name;
 
-  const facts = {
-    ...candidate,
-    constituency,
-    assets_readable: formatINR(candidate.assets_total_inr),
-    liabilities_readable: formatINR(candidate.liabilities_inr),
-  };
-  // Curated affidavit text exists only for the POC seat (AC 161).
-  const extraContext =
-    Number(ac) === 161 && candidate.is_seat_winner ? await getAffidavitText() : "";
-
-  try {
-    const llm = await generateText(
-      "You are a neutral, factual civic-information assistant. Write a concise 3-4 sentence profile of an Indian election candidate using ONLY the provided structured data. Be balanced and non-partisan. Do not invent facts.",
-      `Candidate data (JSON):\n${JSON.stringify(facts, null, 2)}\n\n${extraContext ? `Additional affidavit context:\n${extraContext}\n\n` : ""}Write the profile.`,
-    );
-    if (llm) {
-      return NextResponse.json({ summary: llm.text, source: llm.provider });
-    }
-  } catch (err) {
-    return NextResponse.json({
-      summary: fallbackSummary(candidate, constituency),
-      source: "fallback (LLM error)",
-      warning: String(err),
-    });
-  }
+  const result = await getOrGenerateInsight(
+    "summary",
+    acNo,
+    name,
+    Boolean(force),
+    async () => {
+      const facts = {
+        ...candidate,
+        constituency,
+        assets_readable: formatINR(candidate.assets_total_inr),
+        liabilities_readable: formatINR(candidate.liabilities_inr),
+      };
+      const extraContext =
+        acNo === 161 && candidate.is_seat_winner ? await getAffidavitText() : "";
+      try {
+        const llm = await generateText(
+          "You are a neutral, factual civic-information assistant. Write a concise 3-4 sentence profile of an Indian election candidate using ONLY the provided structured data. Be balanced and non-partisan. Do not invent facts.",
+          `Candidate data (JSON):\n${JSON.stringify(facts, null, 2)}\n\n${extraContext ? `Additional affidavit context:\n${extraContext}\n\n` : ""}Write the profile.`,
+        );
+        if (llm) return { payload: { summary: llm.text, source: llm.provider }, source: llm.provider };
+      } catch (err) {
+        const src = `fallback (LLM error: ${String(err)})`;
+        return { payload: { summary: fallbackSummary(candidate, constituency), source: src }, source: src };
+      }
+      const src = "fallback (no API key configured)";
+      return { payload: { summary: fallbackSummary(candidate, constituency), source: src }, source: src };
+    },
+  );
 
   return NextResponse.json({
-    summary: fallbackSummary(candidate, constituency),
-    source: "fallback (no API key configured)",
+    ...result.payload,
+    cached: result.cached,
+    generatedAt: result.generatedAt,
   });
 }

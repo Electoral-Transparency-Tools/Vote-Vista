@@ -183,6 +183,25 @@ export async function getConstituencyDetail(
   return null;
 }
 
+function rowsToFeatureCollection(
+  rows: Record<string, unknown>[],
+): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: rows.map((r) => ({
+      type: "Feature" as const,
+      properties: {
+        ac_no: num(r.ac_no),
+        ac_name: str(r.ac_name),
+        pc_name: str(r.pc_name),
+        winner_party_short: str(r.party_short),
+        winning_candidate: str(r.winning_candidate),
+      },
+      geometry: JSON.parse(r.geom as string),
+    })),
+  };
+}
+
 /** All constituency boundaries (for the map), tagged with the winning party. */
 export async function getAllConstituenciesGeoJson(): Promise<GeoJSON.FeatureCollection> {
   if (dbConfigured() && sql) {
@@ -195,23 +214,31 @@ export async function getAllConstituenciesGeoJson(): Promise<GeoJSON.FeatureColl
       where c.boundary is not null
       order by c.ac_no
     `) as Record<string, unknown>[];
-    return {
-      type: "FeatureCollection",
-      features: rows.map((r) => ({
-        type: "Feature" as const,
-        properties: {
-          ac_no: num(r.ac_no),
-          ac_name: str(r.ac_name),
-          pc_name: str(r.pc_name),
-          winner_party_short: str(r.party_short),
-          winning_candidate: str(r.winning_candidate),
-        },
-        geometry: JSON.parse(r.geom as string),
-      })),
-    };
+    return rowsToFeatureCollection(rows);
   }
-  // fallback: single-constituency geojson
   return getConstituencyGeoJson() as Promise<GeoJSON.FeatureCollection>;
+}
+
+/** Constituency boundaries whose bounding box intersects the given viewport. */
+export async function getConstituenciesInBBox(
+  minLng: number,
+  minLat: number,
+  maxLng: number,
+  maxLat: number,
+): Promise<GeoJSON.FeatureCollection> {
+  if (dbConfigured() && sql) {
+    const rows = (await sql`
+      select c.ac_no, c.ac_name, c.pc_name,
+             ST_AsGeoJSON(c.boundary)::text as geom,
+             w.party_short, w.winning_candidate
+      from constituency c
+      left join winning_party w on w.ac_no = c.ac_no
+      where c.boundary && ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326)
+      order by c.ac_no
+    `) as Record<string, unknown>[];
+    return rowsToFeatureCollection(rows);
+  }
+  return getAllConstituenciesGeoJson();
 }
 
 export async function getConstituencyGeoJson(): Promise<unknown> {

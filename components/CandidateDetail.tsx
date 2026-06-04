@@ -35,18 +35,20 @@ export default function CandidateDetail({
   const [summary, setSummary] = useState<string>(candidate.ai_summary || "");
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<string>("");
+  const [cached, setCached] = useState(false);
 
-  async function generate() {
+  async function generate(force = false) {
     setLoading(true);
     try {
       const res = await fetch("/api/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: candidate.name, ac }),
+        body: JSON.stringify({ name: candidate.name, ac, force }),
       });
       const data = await res.json();
       setSummary(data.summary ?? "");
       setSource(data.source ?? "");
+      setCached(Boolean(data.cached));
     } catch {
       setSummary("Could not generate summary. Please try again.");
     } finally {
@@ -124,7 +126,7 @@ export default function CandidateDetail({
                 AI summary
               </h3>
               <button
-                onClick={generate}
+                onClick={() => generate(summary !== "")}
                 disabled={loading}
                 className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
               >
@@ -134,7 +136,12 @@ export default function CandidateDetail({
             {summary ? (
               <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
                 {summary}
-                {source && <p className="mt-2 text-[11px] text-slate-400">via {source}</p>}
+                {source && (
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    via {source}
+                    {cached ? " · cached" : " · freshly generated"}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-400">

@@ -73,3 +73,16 @@ create table if not exists source_doc (
   body         text
 );
 create index if not exists source_doc_ac_kind_idx on source_doc (ac_no, kind);
+
+-- Cached AI insight outputs (candidate summary / overview / research report).
+-- Reused until older than the TTL in lib/config.ts, then regenerated.
+create table if not exists ai_insight (
+  id            bigserial primary key,
+  kind          text not null,          -- 'summary' | 'overview' | 'research'
+  ac_no         int not null,
+  ref           text not null default '', -- candidate name for 'summary', else ''
+  payload       jsonb not null,
+  source        text,
+  generated_at  timestamptz not null default now(),
+  unique (kind, ac_no, ref)
+);

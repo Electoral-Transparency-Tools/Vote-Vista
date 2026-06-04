@@ -1,25 +1,14 @@
 import Portal from "@/components/Portal";
-import {
-  getAllConstituenciesGeoJson,
-  getConstituencyDetail,
-  getLocationMeta,
-} from "@/lib/data";
+import { getConstituencyDetail, getLocationMeta } from "@/lib/data";
 
 const DEFAULT_AC = 161; // C.V. Raman Nagar (the fully-featured POC seat)
 
 export default async function HomePage() {
-  const [geojson, detail] = await Promise.all([
-    getAllConstituenciesGeoJson(),
-    getConstituencyDetail(DEFAULT_AC),
-  ]);
+  // Only the default seat's detail is loaded server-side; constituency
+  // boundaries are loaded by the map per-viewport, and other seats' candidate
+  // data is fetched on click.
+  const detail = await getConstituencyDetail(DEFAULT_AC);
   const location = getLocationMeta();
 
-  return (
-    <Portal
-      geojson={geojson}
-      initialDetail={detail!}
-      initialAc={DEFAULT_AC}
-      location={location}
-    />
-  );
+  return <Portal initialDetail={detail!} initialAc={DEFAULT_AC} location={location} />;
 }

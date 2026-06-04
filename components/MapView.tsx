@@ -5,7 +5,6 @@ import maplibregl, { Map as MlMap } from "maplibre-gl";
 import { partyColor } from "@/lib/format";
 
 interface MapViewProps {
-  geojson: GeoJSON.FeatureCollection;
   house: { lat: number; lon: number; label: string };
   selectedAc: number | null;
   onSelect: (ac: number) => void;
@@ -24,51 +23,71 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
-function extendBounds(b: maplibregl.LngLatBounds, geom: GeoJSON.Geometry) {
-  const polys =
-    geom.type === "Polygon"
-      ? [geom.coordinates]
-      : geom.type === "MultiPolygon"
-        ? geom.coordinates
-        : [];
-  for (const poly of polys as number[][][][]) {
-    for (const ring of poly) for (const c of ring) b.extend([c[0], c[1]]);
-  }
-}
-
-export default function MapView({ geojson, house, selectedAc, onSelect }: MapViewProps) {
+export default function MapView({ house, selectedAc, onSelect }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  // Client-side cache of constituency features already loaded (by ac_no), so
+  // panning back over a region does not refetch/redraw it.
+  const cacheRef = useRef<Map<number, GeoJSON.Feature>>(new Map());
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Inject a per-feature fill color based on the winning party.
-    const colored: GeoJSON.FeatureCollection = {
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: OSM_STYLE,
+      center: [house.lon, house.lat],
+      zoom: 12,
+      attributionControl: { compact: true },
+    });
+    mapRef.current = map;
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    const buildData = (): GeoJSON.FeatureCollection => ({
       type: "FeatureCollection",
-      features: geojson.features.map((f) => ({
+      features: [...cacheRef.current.values()].map((f) => ({
         ...f,
         properties: {
           ...f.properties,
           color: partyColor(String(f.properties?.winner_party_short ?? "")),
         },
       })),
+    });
+
+    async function loadViewport() {
+      const b = map.getBounds();
+      const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].join(",");
+      try {
+        const res = await fetch(`/api/constituencies?bbox=${bbox}`);
+        if (!res.ok) return;
+        const fc: GeoJSON.FeatureCollection = await res.json();
+        let added = 0;
+        for (const f of fc.features) {
+          const ac = Number(f.properties?.ac_no);
+          if (!cacheRef.current.has(ac)) {
+            cacheRef.current.set(ac, f);
+            added++;
+          }
+        }
+        if (added > 0) {
+          const src = map.getSource("cons") as maplibregl.GeoJSONSource | undefined;
+          src?.setData(buildData());
+        }
+      } catch {
+        /* ignore network errors */
+      }
+    }
+
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const onMoveEnd = () => {
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(loadViewport, 350);
     };
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: OSM_STYLE,
-      center: [house.lon, house.lat],
-      zoom: 11,
-      attributionControl: { compact: true },
-    });
-    mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
-
     map.on("load", () => {
-      map.addSource("cons", { type: "geojson", data: colored });
+      map.addSource("cons", { type: "geojson", data: buildData() });
       map.addLayer({
         id: "cons-fill",
         type: "fill",
@@ -96,13 +115,7 @@ export default function MapView({ geojson, house, selectedAc, onSelect }: MapVie
         if (f) {
           popup
             .setLngLat(e.lngLat)
-            .setHTML(
-              `<strong>${f.properties?.ac_name ?? ""}</strong><br/>${
-                f.properties?.winning_candidate
-                  ? `Won by ${f.properties.winning_candidate} (${f.properties.winner_party_short})`
-                  : ""
-              }`,
-            )
+            .setHTML(`<strong>${f.properties?.ac_name ?? ""}</strong>`)
             .addTo(map);
         }
       });
@@ -115,7 +128,6 @@ export default function MapView({ geojson, house, selectedAc, onSelect }: MapVie
         if (ac != null) onSelectRef.current(Number(ac));
       });
 
-      // House marker
       const el = document.createElement("div");
       el.style.cssText =
         "width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 0 0 2px #ef4444;";
@@ -124,23 +136,21 @@ export default function MapView({ geojson, house, selectedAc, onSelect }: MapVie
         .setPopup(new maplibregl.Popup({ offset: 14 }).setText(house.label))
         .addTo(map);
 
-      const bounds = new maplibregl.LngLatBounds();
-      for (const f of colored.features) extendBounds(bounds, f.geometry);
-      bounds.extend([house.lon, house.lat]);
-      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, duration: 0 });
+      loadViewport();
+      map.on("moveend", onMoveEnd);
     });
 
     return () => {
+      if (debounce) clearTimeout(debounce);
       map.remove();
       mapRef.current = null;
     };
-    // Initialise the map exactly once, on mount. `geojson`/`house` are stable
-    // for the lifetime of the page, so we deliberately do not re-run this
-    // effect on re-render — that would re-create the map and reset pan/zoom.
+    // Initialise the map exactly once, on mount. Data is loaded dynamically by
+    // viewport; re-running this effect would reset pan/zoom.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update the highlighted constituency outline.
+  // Update the highlighted constituency outline when selection changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
