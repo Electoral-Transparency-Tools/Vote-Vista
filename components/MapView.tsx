@@ -134,7 +134,11 @@ export default function MapView({ geojson, house, selectedAc, onSelect }: MapVie
       map.remove();
       mapRef.current = null;
     };
-  }, [geojson, house]);
+    // Initialise the map exactly once, on mount. `geojson`/`house` are stable
+    // for the lifetime of the page, so we deliberately do not re-run this
+    // effect on re-render — that would re-create the map and reset pan/zoom.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update the highlighted constituency outline.
   useEffect(() => {
