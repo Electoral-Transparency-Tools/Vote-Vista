@@ -114,6 +114,106 @@ export async function getWinningParty(): Promise<WinningParty> {
   return readJson<WinningParty>("data/winning_party.json");
 }
 
+function rowToConstituency(c: Record<string, unknown>): ConstituencyMeta {
+  return {
+    ac_no: num(c.ac_no) ?? 0,
+    ac_name: str(c.ac_name),
+    pc_name: str(c.pc_name),
+    district: str(c.district),
+    state: str(c.state),
+    election: str(c.election),
+    poll_date: str(c.poll_date),
+    result_date: str(c.result_date),
+    total_electors: num(c.total_electors) ?? 0,
+    total_valid_votes: num(c.total_valid_votes) ?? 0,
+    turnout_pct: num(c.turnout_pct) ?? 0,
+    reservation: str(c.reservation),
+  };
+}
+
+export interface ConstituencyDetail {
+  constituency: ConstituencyMeta;
+  candidates: Candidate[];
+  winningParty: { party: string; party_short: string; winning_candidate: string } | null;
+}
+
+/** Full detail for any constituency (DB-backed; file fallback only for AC 161). */
+export async function getConstituencyDetail(
+  ac: number,
+): Promise<ConstituencyDetail | null> {
+  if (dbConfigured() && sql) {
+    const [c] = (await sql`select * from constituency where ac_no = ${ac}`) as Record<
+      string,
+      unknown
+    >[];
+    if (!c) return null;
+    const rows = (await sql`
+      select * from candidate where ac_no = ${ac}
+      order by votes desc nulls last, name
+    `) as Record<string, unknown>[];
+    const [w] = (await sql`select * from winning_party where ac_no = ${ac}`) as Record<
+      string,
+      unknown
+    >[];
+    return {
+      constituency: rowToConstituency(c),
+      candidates: rows.map(rowToCandidate),
+      winningParty: w
+        ? {
+            party: str(w.party),
+            party_short: str(w.party_short),
+            winning_candidate: str(w.winning_candidate),
+          }
+        : null,
+    };
+  }
+  if (ac === 161) {
+    const f = readJson<CandidatesFile>("data/candidates.json");
+    const w = readJson<WinningParty>("data/winning_party.json");
+    return {
+      constituency: f.constituency,
+      candidates: f.candidates,
+      winningParty: {
+        party: w.party,
+        party_short: w.party_short,
+        winning_candidate: w.winning_candidate,
+      },
+    };
+  }
+  return null;
+}
+
+/** All constituency boundaries (for the map), tagged with the winning party. */
+export async function getAllConstituenciesGeoJson(): Promise<GeoJSON.FeatureCollection> {
+  if (dbConfigured() && sql) {
+    const rows = (await sql`
+      select c.ac_no, c.ac_name, c.pc_name,
+             ST_AsGeoJSON(c.boundary)::text as geom,
+             w.party_short, w.winning_candidate
+      from constituency c
+      left join winning_party w on w.ac_no = c.ac_no
+      where c.boundary is not null
+      order by c.ac_no
+    `) as Record<string, unknown>[];
+    return {
+      type: "FeatureCollection",
+      features: rows.map((r) => ({
+        type: "Feature" as const,
+        properties: {
+          ac_no: num(r.ac_no),
+          ac_name: str(r.ac_name),
+          pc_name: str(r.pc_name),
+          winner_party_short: str(r.party_short),
+          winning_candidate: str(r.winning_candidate),
+        },
+        geometry: JSON.parse(r.geom as string),
+      })),
+    };
+  }
+  // fallback: single-constituency geojson
+  return getConstituencyGeoJson() as Promise<GeoJSON.FeatureCollection>;
+}
+
 export async function getConstituencyGeoJson(): Promise<unknown> {
   if (dbConfigured() && sql) {
     const [row] = (await sql`

@@ -7,8 +7,8 @@ import { partyColor } from "@/lib/format";
 interface MapViewProps {
   geojson: GeoJSON.FeatureCollection;
   house: { lat: number; lon: number; label: string };
-  winnerPartyShort: string;
-  highlight: boolean;
+  selectedAc: number | null;
+  onSelect: (ac: number) => void;
 }
 
 const OSM_STYLE: maplibregl.StyleSpecification = {
@@ -24,93 +24,130 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
-export default function MapView({
-  geojson,
-  house,
-  winnerPartyShort,
-  highlight,
-}: MapViewProps) {
+function extendBounds(b: maplibregl.LngLatBounds, geom: GeoJSON.Geometry) {
+  const polys =
+    geom.type === "Polygon"
+      ? [geom.coordinates]
+      : geom.type === "MultiPolygon"
+        ? geom.coordinates
+        : [];
+  for (const poly of polys as number[][][][]) {
+    for (const ring of poly) for (const c of ring) b.extend([c[0], c[1]]);
+  }
+}
+
+export default function MapView({ geojson, house, selectedAc, onSelect }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+
+    // Inject a per-feature fill color based on the winning party.
+    const colored: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: geojson.features.map((f) => ({
+        ...f,
+        properties: {
+          ...f.properties,
+          color: partyColor(String(f.properties?.winner_party_short ?? "")),
+        },
+      })),
+    };
 
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: OSM_STYLE,
       center: [house.lon, house.lat],
-      zoom: 12,
+      zoom: 11,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      map.addSource("constituency", { type: "geojson", data: geojson });
-      const color = partyColor(winnerPartyShort);
-
+      map.addSource("cons", { type: "geojson", data: colored });
       map.addLayer({
-        id: "constituency-fill",
+        id: "cons-fill",
         type: "fill",
-        source: "constituency",
-        paint: { "fill-color": color, "fill-opacity": 0.18 },
+        source: "cons",
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.35 },
       });
       map.addLayer({
-        id: "constituency-line",
+        id: "cons-line",
         type: "line",
-        source: "constituency",
-        paint: { "line-color": color, "line-width": 2.5 },
+        source: "cons",
+        paint: { "line-color": "#334155", "line-width": 0.8, "line-opacity": 0.6 },
+      });
+      map.addLayer({
+        id: "cons-selected",
+        type: "line",
+        source: "cons",
+        filter: ["==", ["get", "ac_no"], selectedAc ?? -1],
+        paint: { "line-color": "#0f172a", "line-width": 3.5 },
+      });
+
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+      map.on("mousemove", "cons-fill", (e) => {
+        map.getCanvas().style.cursor = "pointer";
+        const f = e.features?.[0];
+        if (f) {
+          popup
+            .setLngLat(e.lngLat)
+            .setHTML(
+              `<strong>${f.properties?.ac_name ?? ""}</strong><br/>${
+                f.properties?.winning_candidate
+                  ? `Won by ${f.properties.winning_candidate} (${f.properties.winner_party_short})`
+                  : ""
+              }`,
+            )
+            .addTo(map);
+        }
+      });
+      map.on("mouseleave", "cons-fill", () => {
+        map.getCanvas().style.cursor = "";
+        popup.remove();
+      });
+      map.on("click", "cons-fill", (e) => {
+        const ac = e.features?.[0]?.properties?.ac_no;
+        if (ac != null) onSelectRef.current(Number(ac));
       });
 
       // House marker
       const el = document.createElement("div");
       el.style.cssText =
-        "width:16px;height:16px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 0 0 2px #ef4444;";
+        "width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 0 0 2px #ef4444;";
       new maplibregl.Marker({ element: el })
         .setLngLat([house.lon, house.lat])
         .setPopup(new maplibregl.Popup({ offset: 14 }).setText(house.label))
         .addTo(map);
 
-      // Fit to polygon bounds
       const bounds = new maplibregl.LngLatBounds();
-      const fc = geojson;
-      for (const f of fc.features) {
-        const g = f.geometry;
-        const polys =
-          g.type === "Polygon"
-            ? [g.coordinates]
-            : g.type === "MultiPolygon"
-              ? g.coordinates
-              : [];
-        for (const poly of polys) {
-          for (const ring of poly as number[][][]) {
-            for (const c of ring) bounds.extend([c[0], c[1]]);
-          }
-        }
-      }
+      for (const f of colored.features) extendBounds(bounds, f.geometry);
       bounds.extend([house.lon, house.lat]);
-      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 48, duration: 0 });
+      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 36, duration: 0 });
     });
 
     return () => {
       map.remove();
       mapRef.current = null;
     };
-  }, [geojson, house, winnerPartyShort]);
+  }, [geojson, house]);
 
-  // Toggle highlight opacity when the winner filter is active
+  // Update the highlighted constituency outline.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    if (map.getLayer("constituency-fill")) {
-      map.setPaintProperty(
-        "constituency-fill",
-        "fill-opacity",
-        highlight ? 0.32 : 0.18,
-      );
-    }
-  }, [highlight]);
+    if (!map) return;
+    const apply = () => {
+      if (map.getLayer("cons-selected")) {
+        map.setFilter("cons-selected", ["==", ["get", "ac_no"], selectedAc ?? -1]);
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [selectedAc]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

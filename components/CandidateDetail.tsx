@@ -25,9 +25,11 @@ function LinkRow({ label, url }: { label: string; url: string }) {
 
 export default function CandidateDetail({
   candidate,
+  aiEnabled = true,
   onClose,
 }: {
   candidate: Candidate;
+  aiEnabled?: boolean;
   onClose: () => void;
 }) {
   const [summary, setSummary] = useState<string>(candidate.ai_summary || "");
@@ -116,32 +118,32 @@ export default function CandidateDetail({
             <LinkRow label="Work history (PRS)" url={candidate.prs_url} />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                AI summary
-              </h3>
-              <button
-                onClick={generate}
-                disabled={loading}
-                className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
-              >
-                {loading ? "Generating…" : summary ? "Regenerate" : "Generate"}
-              </button>
-            </div>
-            {summary ? (
-              <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
-                {summary}
-                {source && (
-                  <p className="mt-2 text-[11px] text-slate-400">via {source}</p>
-                )}
+          {aiEnabled && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  AI summary
+                </h3>
+                <button
+                  onClick={generate}
+                  disabled={loading}
+                  className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+                >
+                  {loading ? "Generating…" : summary ? "Regenerate" : "Generate"}
+                </button>
               </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                Click Generate for an AI-written, data-based profile.
-              </p>
-            )}
-          </div>
+              {summary ? (
+                <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
+                  {summary}
+                  {source && <p className="mt-2 text-[11px] text-slate-400">via {source}</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Click Generate for an AI-written, data-based profile.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
