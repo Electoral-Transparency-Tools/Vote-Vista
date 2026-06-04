@@ -17,7 +17,7 @@ create table if not exists constituency (
   total_valid_votes int,
   turnout_pct       numeric,
   reservation       text,
-  boundary          geometry(Polygon, 4326)
+  boundary          geometry(MultiPolygon, 4326)
 );
 create index if not exists constituency_boundary_gix on constituency using gist (boundary);
 

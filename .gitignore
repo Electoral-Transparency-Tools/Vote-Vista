@@ -34,4 +34,6 @@ coverage
 # These files are kept locally only, as inputs for `npm run db:seed`.
 /data/*
 !/data/location_meta.json
+# Public constituency boundaries (LGD/CC) — tracked as a reproducible seed input.
+!/data/bangalore_constituencies.geojson
 /sources/

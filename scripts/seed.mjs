@@ -52,7 +52,7 @@ async function main() {
     values (${c.ac_no}, ${c.ac_name}, ${c.pc_name}, ${c.district}, ${c.state},
       ${c.election}, ${c.poll_date}, ${c.result_date}, ${c.total_electors},
       ${c.total_valid_votes}, ${c.turnout_pct}, ${c.reservation},
-      ST_SetSRID(ST_GeomFromGeoJSON(${geometry}), 4326))`;
+      ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(${geometry}), 4326)))`;
 
   // 4. Candidates.
   console.log(`Inserting ${cand.candidates.length} candidates…`);

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:seed": "node --env-file=.env.local scripts/seed.mjs"
+    "db:seed": "node --env-file=.env.local scripts/seed.mjs",
+    "db:seed:constituencies": "node --env-file=.env.local scripts/seed-constituencies.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
