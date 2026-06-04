@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Candidate, ConstituencyMeta, LocationMeta } from "@/lib/types";
 import { formatINR, partyColor } from "@/lib/format";
 import CandidateDetail from "./CandidateDetail";
@@ -37,11 +37,54 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
   const [highlightWinner, setHighlightWinner] = useState(false);
   const [overview, setOverview] = useState("");
   const [overviewLoading, setOverviewLoading] = useState(false);
+  const [focusPoint, setFocusPoint] = useState<{ lat: number; lng: number } | null>(null);
 
   // Cache fetched constituency details so re-selecting one doesn't refetch.
   const detailCacheRef = useRef<Map<number, Detail>>(
     new Map([[initialAc, initialDetail]]),
   );
+
+  // On load, if the user grants live location and it falls inside a known
+  // constituency, switch to it and recentre the map.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const res = await fetch(`/api/locate?lat=${lat}&lng=${lng}`);
+          if (!res.ok) return;
+          const { ac } = await res.json();
+          if (cancelled || !ac) return;
+          setFocusPoint({ lat, lng });
+          const cached = detailCacheRef.current.get(ac);
+          if (cached) {
+            setDetail(cached);
+            setSelectedAc(ac);
+            return;
+          }
+          const dres = await fetch(`/api/constituency/${ac}`);
+          if (dres.ok) {
+            const d: Detail = await dres.json();
+            detailCacheRef.current.set(ac, d);
+            setDetail(d);
+            setSelectedAc(ac);
+          }
+        } catch {
+          /* ignore */
+        }
+      },
+      () => {
+        /* permission denied / unavailable: keep server default */
+      },
+      { timeout: 8000, maximumAge: 600000 },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const { constituency, candidates, winningParty } = detail;
 
@@ -220,7 +263,12 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
         </aside>
 
         <main className="relative min-h-[320px]">
-          <MapView house={house} selectedAc={selectedAc} onSelect={selectAc} />
+          <MapView
+            house={house}
+            selectedAc={selectedAc}
+            onSelect={selectAc}
+            focusPoint={focusPoint}
+          />
           <div className="pointer-events-none absolute bottom-6 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-slate-600 shadow">
             Hover for a name · click a constituency to view its candidates
           </div>

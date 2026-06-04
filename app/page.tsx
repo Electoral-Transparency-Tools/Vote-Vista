@@ -1,14 +1,24 @@
 import Portal from "@/components/Portal";
-import { getConstituencyDetail, getLocationMeta } from "@/lib/data";
+import {
+  getConstituencyAtPoint,
+  getConstituencyDetail,
+  getLocationMeta,
+} from "@/lib/data";
 
-const DEFAULT_AC = 161; // C.V. Raman Nagar (the fully-featured POC seat)
+const FALLBACK_AC = 161; // used only if the provided location can't be resolved
 
 export default async function HomePage() {
-  // Only the default seat's detail is loaded server-side; constituency
-  // boundaries are loaded by the map per-viewport, and other seats' candidate
-  // data is fetched on click.
-  const detail = await getConstituencyDetail(DEFAULT_AC);
   const location = getLocationMeta();
 
-  return <Portal initialDetail={detail!} initialAc={DEFAULT_AC} location={location} />;
+  // First load shows the candidate data for the user's provided location
+  // (the configured house coordinates). The browser may override this with a
+  // live geolocation fix on the client.
+  const houseAc = await getConstituencyAtPoint(
+    location.poc_location.lat,
+    location.poc_location.lon,
+  );
+  const initialAc = houseAc ?? FALLBACK_AC;
+  const detail = await getConstituencyDetail(initialAc);
+
+  return <Portal initialDetail={detail!} initialAc={initialAc} location={location} />;
 }

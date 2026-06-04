@@ -219,6 +219,23 @@ export async function getAllConstituenciesGeoJson(): Promise<GeoJSON.FeatureColl
   return getConstituencyGeoJson() as Promise<GeoJSON.FeatureCollection>;
 }
 
+/** Which constituency contains a given point (lat/lng), via PostGIS. */
+export async function getConstituencyAtPoint(
+  lat: number,
+  lng: number,
+): Promise<number | null> {
+  if (dbConfigured() && sql) {
+    const rows = (await sql`
+      select ac_no from constituency
+      where boundary is not null
+        and ST_Contains(boundary, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326))
+      limit 1
+    `) as Record<string, unknown>[];
+    if (rows.length) return Number(rows[0].ac_no);
+  }
+  return null;
+}
+
 /** Constituency boundaries whose bounding box intersects the given viewport. */
 export async function getConstituenciesInBBox(
   minLng: number,

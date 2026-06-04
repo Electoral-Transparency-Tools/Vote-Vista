@@ -8,6 +8,7 @@ interface MapViewProps {
   house: { lat: number; lon: number; label: string };
   selectedAc: number | null;
   onSelect: (ac: number) => void;
+  focusPoint: { lat: number; lng: number } | null;
 }
 
 const OSM_STYLE: maplibregl.StyleSpecification = {
@@ -23,7 +24,7 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
-export default function MapView({ house, selectedAc, onSelect }: MapViewProps) {
+export default function MapView({ house, selectedAc, onSelect, focusPoint }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const onSelectRef = useRef(onSelect);
@@ -162,6 +163,13 @@ export default function MapView({ house, selectedAc, onSelect }: MapViewProps) {
     if (map.isStyleLoaded()) apply();
     else map.once("idle", apply);
   }, [selectedAc]);
+
+  // Recentre when a live geolocation fix arrives.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusPoint) return;
+    map.flyTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 12 });
+  }, [focusPoint]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
