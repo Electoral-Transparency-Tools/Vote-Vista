@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Candidate, ConstituencyMeta, LocationMeta } from "@/lib/types";
 import { formatINR, partyColor } from "@/lib/format";
 import CandidateDetail from "./CandidateDetail";
@@ -29,8 +29,6 @@ interface PortalProps {
   location: LocationMeta;
 }
 
-const AI_AC = 161; // AI features have source data only for C.V. Raman Nagar
-
 export default function Portal({ geojson, initialDetail, initialAc, location }: PortalProps) {
   const [selectedAc, setSelectedAc] = useState(initialAc);
   const [detail, setDetail] = useState<Detail>(initialDetail);
@@ -41,8 +39,18 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
   const [overview, setOverview] = useState("");
   const [overviewLoading, setOverviewLoading] = useState(false);
 
-  const aiEnabled = selectedAc === AI_AC;
   const { constituency, candidates, winningParty } = detail;
+
+  // Stable reference so MapView doesn't re-initialise (and reset its view)
+  // every time another constituency is selected.
+  const house = useMemo(
+    () => ({
+      lat: location.poc_location.lat,
+      lon: location.poc_location.lon,
+      label: location.poc_location.label,
+    }),
+    [location],
+  );
 
   async function selectAc(ac: number) {
     if (ac === selectedAc) return;
@@ -63,7 +71,11 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
   async function loadOverview() {
     setOverviewLoading(true);
     try {
-      const res = await fetch("/api/overview", { method: "POST" });
+      const res = await fetch("/api/overview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ac: selectedAc }),
+      });
       const data = await res.json();
       setOverview(data.overview ?? "");
     } finally {
@@ -91,14 +103,12 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
               Won by {winningParty.winning_candidate} ({winningParty.party_short})
             </span>
           )}
-          {aiEnabled && (
-            <button
-              onClick={() => setResearchOpen(true)}
-              className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
-            >
-              🔍 Research the MLA
-            </button>
-          )}
+          <button
+            onClick={() => setResearchOpen(true)}
+            className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
+          >
+            🔍 Research the MLA
+          </button>
         </div>
       </header>
 
@@ -111,27 +121,25 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
           )}
           <ConstituencyStats constituency={constituency} />
 
-          {aiEnabled && (
-            <div className="border-b border-slate-200 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-700">
-                  AI overview · top candidates
-                </h2>
-                <button
-                  onClick={loadOverview}
-                  disabled={overviewLoading}
-                  className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {overviewLoading ? "…" : overview ? "Refresh" : "Generate"}
-                </button>
-              </div>
-              {overview && (
-                <p className="mt-2 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
-                  {overview}
-                </p>
-              )}
+          <div className="border-b border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">
+                AI overview · top candidates
+              </h2>
+              <button
+                onClick={loadOverview}
+                disabled={overviewLoading}
+                className="rounded-md bg-slate-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+              >
+                {overviewLoading ? "…" : overview ? "Refresh" : "Generate"}
+              </button>
             </div>
-          )}
+            {overview && (
+              <p className="mt-2 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+                {overview}
+              </p>
+            )}
+          </div>
 
           <div className="flex items-center justify-between px-4 pt-4">
             <h2 className="text-sm font-semibold text-slate-700">
@@ -219,11 +227,13 @@ export default function Portal({ geojson, initialDetail, initialAc, location }: 
       {selected && (
         <CandidateDetail
           candidate={selected}
-          aiEnabled={aiEnabled}
+          ac={selectedAc}
           onClose={() => setSelected(null)}
         />
       )}
-      {researchOpen && <ResearchPanel onClose={() => setResearchOpen(false)} />}
+      {researchOpen && (
+        <ResearchPanel ac={selectedAc} onClose={() => setResearchOpen(false)} />
+      )}
     </div>
   );
 }

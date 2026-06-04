@@ -3,14 +3,24 @@
 import { useState } from "react";
 import type { ResearchReport } from "@/lib/types";
 
-export default function ResearchPanel({ onClose }: { onClose: () => void }) {
+export default function ResearchPanel({
+  ac,
+  onClose,
+}: {
+  ac: number;
+  onClose: () => void;
+}) {
   const [report, setReport] = useState<ResearchReport | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function run() {
     setLoading(true);
     try {
-      const res = await fetch("/api/research", { method: "POST" });
+      const res = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ac }),
+      });
       setReport(await res.json());
     } catch {
       setReport(null);
