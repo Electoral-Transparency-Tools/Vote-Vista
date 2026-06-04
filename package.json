@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "node --env-file=.env.local scripts/seed.mjs",
-    "db:seed:constituencies": "node --env-file=.env.local scripts/seed-constituencies.mjs"
+    "db:seed:constituencies": "node --env-file=.env.local scripts/seed-constituencies.mjs",
+    "db:seed:candidates": "node --env-file=.env.local scripts/seed-bangalore-candidates.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
