@@ -19,5 +19,13 @@ await sql.query(`
     unique (kind, ac_no, ref)
   )
 `);
+await sql.query(`
+  create table if not exists rate_limit (
+    bucket        text not null,
+    window_start  timestamptz not null,
+    count         int not null default 0,
+    primary key (bucket, window_start)
+  )
+`);
 const [{ n }] = await sql`select count(*)::int n from ai_insight`;
-console.log("ai_insight table ready, rows:", n);
+console.log("ai_insight + rate_limit tables ready. ai_insight rows:", n);

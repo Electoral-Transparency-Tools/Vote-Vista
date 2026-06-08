@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getConstituencyDetail, getAffidavitText } from "@/lib/data";
 import { generateText } from "@/lib/ai";
 import { getOrGenerateInsight } from "@/lib/insights";
+import { clientId } from "@/lib/ratelimit";
 import { webSearch, normalizeUrl, type SearchResult } from "@/lib/search";
 import { formatINR } from "@/lib/format";
 import type { Candidate } from "@/lib/types";
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
   }
   const constituency = detail.constituency.ac_name;
 
-  const result = await getOrGenerateInsight("summary", acNo, name, Boolean(force), async () => {
+  const result = await getOrGenerateInsight("summary", acNo, name, Boolean(force), clientId(req), async () => {
     // 1. Live web research about the candidate.
     let live: SearchResult[] = [];
     let provider = "";
@@ -109,9 +110,16 @@ export async function POST(req: Request) {
     return { payload: { summary: fallbackSummary(candidate, constituency), source: src, sources }, source: src };
   });
 
+  if (result.blocked) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many AI requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(result.retryAfterSec ?? 600) } },
+    );
+  }
   return NextResponse.json({
     ...result.payload,
     cached: result.cached,
+    rateLimited: result.rateLimited,
     generatedAt: result.generatedAt,
   });
 }

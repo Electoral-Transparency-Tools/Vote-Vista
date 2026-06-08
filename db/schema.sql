@@ -86,3 +86,11 @@ create table if not exists ai_insight (
   generated_at  timestamptz not null default now(),
   unique (kind, ac_no, ref)
 );
+
+-- Fixed-window rate-limit counters (per-IP and global) for AI generations.
+create table if not exists rate_limit (
+  bucket        text not null,
+  window_start  timestamptz not null,
+  count         int not null default 0,
+  primary key (bucket, window_start)
+);

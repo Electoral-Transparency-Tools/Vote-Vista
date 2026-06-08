@@ -21,7 +21,18 @@ export default function ResearchPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ac, force }),
       });
-      setReport(await res.json());
+      const data = await res.json();
+      if (res.status === 429) {
+        setReport({
+          generatedBy: "rate limited",
+          workSummary: data.message ?? "Rate limit reached. Please try again later.",
+          integrityScan: "",
+          promiseVsResult: "",
+          sources: [],
+        });
+        return;
+      }
+      setReport(data);
     } catch {
       setReport(null);
     } finally {

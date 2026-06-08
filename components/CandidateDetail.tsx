@@ -47,6 +47,13 @@ export default function CandidateDetail({
         body: JSON.stringify({ name: candidate.name, ac, force }),
       });
       const data = await res.json();
+      if (res.status === 429) {
+        setSummary(data.message ?? "Rate limit reached. Please try again later.");
+        setSource("");
+        setSources([]);
+        setCached(false);
+        return;
+      }
       setSummary(data.summary ?? "");
       setSource(data.source ?? "");
       setCached(Boolean(data.cached));

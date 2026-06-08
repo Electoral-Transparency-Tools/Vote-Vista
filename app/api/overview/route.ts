@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getConstituencyDetail } from "@/lib/data";
 import { generateText } from "@/lib/ai";
 import { getOrGenerateInsight } from "@/lib/insights";
+import { clientId } from "@/lib/ratelimit";
 import { formatINR } from "@/lib/format";
 
 export const runtime = "nodejs";
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const result = await getOrGenerateInsight("overview", acNo, "", Boolean(force), async () => {
+  const result = await getOrGenerateInsight("overview", acNo, "", Boolean(force), clientId(req), async () => {
     const contenders = detail.candidates
       .filter((c) => c.party_short !== "NOTA")
       .sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
@@ -44,9 +45,16 @@ export async function POST(req: Request) {
     return { payload: { overview: fallback, source: src }, source: src };
   });
 
+  if (result.blocked) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many AI requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(result.retryAfterSec ?? 600) } },
+    );
+  }
   return NextResponse.json({
     ...result.payload,
     cached: result.cached,
+    rateLimited: result.rateLimited,
     generatedAt: result.generatedAt,
   });
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/data";
 import { generateText } from "@/lib/ai";
 import { getOrGenerateInsight } from "@/lib/insights";
+import { clientId } from "@/lib/ratelimit";
 import { webSearch, normalizeUrl, type SearchResult } from "@/lib/search";
 import type { ResearchReport, MlaNews } from "@/lib/types";
 
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   const constituency = detail.constituency.ac_name;
   const winner = detail.candidates.find((c) => c.is_seat_winner);
 
-  const result = await getOrGenerateInsight("research", acNo, "", Boolean(force), async () => {
+  const result = await getOrGenerateInsight("research", acNo, "", Boolean(force), clientId(req), async () => {
     let news: MlaNews = { subject: "", purpose: "", collected_on: "", articles: [], gaps_to_fill_by_agent: [] };
     let affidavit = "";
     let manifesto = "";
@@ -145,9 +146,16 @@ export async function POST(req: Request) {
     return { payload: report, source: report.generatedBy };
   });
 
+  if (result.blocked) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many AI requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(result.retryAfterSec ?? 600) } },
+    );
+  }
   return NextResponse.json({
     ...result.payload,
     cached: result.cached,
+    rateLimited: result.rateLimited,
     generatedAt: result.generatedAt,
   });
 }

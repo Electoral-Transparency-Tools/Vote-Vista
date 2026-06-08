@@ -133,6 +133,10 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
         body: JSON.stringify({ ac: selectedAc, force }),
       });
       const data = await res.json();
+      if (res.status === 429) {
+        setOverview(data.message ?? "Rate limit reached. Please try again later.");
+        return;
+      }
       setOverview(data.overview ?? "");
     } finally {
       setOverviewLoading(false);
