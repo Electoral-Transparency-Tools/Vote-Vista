@@ -32,10 +32,11 @@ export default function CandidateDetail({
   ac: number;
   onClose: () => void;
 }) {
-  const [summary, setSummary] = useState<string>(candidate.ai_summary || "");
+  const [summary, setSummary] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<string>("");
   const [cached, setCached] = useState(false);
+  const [sources, setSources] = useState<{ title: string; url: string }[]>([]);
 
   async function generate(force = false) {
     setLoading(true);
@@ -49,8 +50,9 @@ export default function CandidateDetail({
       setSummary(data.summary ?? "");
       setSource(data.source ?? "");
       setCached(Boolean(data.cached));
+      setSources(Array.isArray(data.sources) ? data.sources : []);
     } catch {
-      setSummary("Could not generate summary. Please try again.");
+      setSummary("Could not research this candidate. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -123,19 +125,40 @@ export default function CandidateDetail({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                AI summary
+                AI research
               </h3>
               <button
                 onClick={() => generate(summary !== "")}
                 disabled={loading}
                 className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
               >
-                {loading ? "Generating…" : summary ? "Regenerate" : "Generate"}
+                {loading ? "Researching…" : summary ? "Regenerate" : "Research"}
               </button>
             </div>
             {summary ? (
               <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 dark:bg-slate-700/50 dark:text-slate-200">
                 {summary}
+                {sources.length > 0 && (
+                  <div className="mt-3 border-t border-slate-200 pt-2 dark:border-slate-600">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Sources
+                    </p>
+                    <ul className="space-y-0.5">
+                      {sources.map((s) => (
+                        <li key={s.url}>
+                          <a
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-brand hover:underline dark:text-blue-400"
+                          >
+                            {s.title} ↗
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {source && (
                   <p className="mt-2 text-[11px] text-slate-400">
                     via {source}
@@ -145,7 +168,8 @@ export default function CandidateDetail({
               </div>
             ) : (
               <p className="text-sm text-slate-400">
-                Click Generate for an AI-written, data-based profile.
+                Click Research to search the web for this candidate&apos;s record —
+                work in previous roles and any corruption/criminal associations.
               </p>
             )}
           </div>
