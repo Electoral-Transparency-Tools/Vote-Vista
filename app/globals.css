@@ -23,3 +23,10 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   @apply rounded-full bg-slate-300 dark:bg-slate-600;
 }
+
+/* Map hover tooltip: the popup background stays white in both themes, so keep
+   the text dark (otherwise it inherits the light dark-mode body colour and is
+   unreadable). */
+.maplibregl-popup-content {
+  color: #0f172a;
+}

@@ -173,8 +173,8 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[420px_1fr]">
-        <aside className="relative flex flex-col overflow-y-auto border-r border-slate-200 bg-white scrollbar-thin dark:border-slate-700 dark:bg-slate-800">
+      <div className="grid flex-1 grid-cols-1 grid-rows-[45vh_1fr] overflow-hidden lg:grid-cols-[420px_1fr] lg:grid-rows-1">
+        <aside className="relative order-2 flex flex-col overflow-y-auto border-r border-slate-200 bg-white scrollbar-thin dark:border-slate-700 dark:bg-slate-800 lg:order-1">
           {loading && (
             <div className="absolute inset-x-0 top-0 z-20 bg-brand/90 py-1 text-center text-xs font-medium text-white">
               Loading constituency…
@@ -268,7 +268,7 @@ export default function Portal({ initialDetail, initialAc, location }: PortalPro
           </ul>
         </aside>
 
-        <main className="relative min-h-[320px]">
+        <main className="relative order-1 min-h-[320px] lg:order-2">
           <MapView
             house={house}
             selectedAc={selectedAc}
