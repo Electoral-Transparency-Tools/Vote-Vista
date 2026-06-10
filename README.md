@@ -1,155 +1,171 @@
 # VoteVista
 
-A web portal for visualizing electoral candidates — their assets, criminal records,
-manifestos, and the work of the sitting MLA — on an interactive map of your
-constituency. This is a proof-of-concept scoped to one Karnataka Assembly
-constituency in East Bengaluru.
+VoteVista is a civic-information web app for exploring Karnataka Assembly
+constituencies, candidates, winner details, and AI-assisted research summaries on
+an interactive map.
 
-> **Tech stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS ·
-> MapLibre GL (OpenStreetMap tiles). Data is read at runtime from local
-> `data/` and `sources/` folders — no database required for the POC.
+The current proof of concept focuses on the 2023 Karnataka Legislative Assembly
+election. C.V. Raman Nagar (SC), AC 161 has the richest curated local dataset;
+when a Postgres/PostGIS database is configured, the app can also load broader
+Bengaluru constituency boundaries and candidate records.
 
 ## Features
 
-- **🗺️ Interactive map + list view** — the constituency boundary rendered on a map
-  (colored by the winning party) with your location pinned, alongside a candidate list.
-- **🧑‍⚖️ Candidate explorer** — every candidate with vote share, assets/liabilities,
-  education, and a criminal-case flag. The **seat winner (ruling party)** is clearly marked.
-- **🔗 Per-candidate records** — one-click links to each candidate's MyNeta affidavit,
-  manifesto, and PRS work history, plus an **AI-written, data-based profile**.
-- **🤖 AI overview of top candidates** — a balanced, on-demand summary of the leading contenders.
-- **🔍 MLA research agent** — on demand, scans the gathered sources (news, affidavit,
-  manifesto) and returns a structured report: **work done · integrity/corruption scan ·
-  promise-vs-result comparison**, with citations. With a `TAVILY_API_KEY` set, it also
-  pulls **live web/news results** and prefers the freshest items.
+- Interactive MapLibre map using OpenStreetMap tiles.
+- Viewport-loaded assembly constituency boundaries colored by winning party.
+- Geolocation lookup that switches the selected constituency when the user grants
+  browser location access.
+- Constituency stats, candidate list, winner highlighting, and candidate detail
+  drawer.
+- Candidate records for votes, vote share, assets, liabilities, education,
+  declared criminal cases, and source links.
+- On-demand AI overview of top candidates.
+- On-demand MLA research report covering work record, integrity/corruption scan,
+  and promise-vs-result context.
+- Optional live web search through Tavily and optional LLM output through OpenAI,
+  OpenAI-compatible providers such as Gemini, or Anthropic.
+- Deterministic fallback summaries when AI keys are not configured.
+- Light/dark theme toggle.
 
-> All AI features run **out of the box with no API key** via a deterministic,
-> data-driven fallback. Add an API key (below) for live LLM-generated output.
+## Tech Stack
 
-## Installation
+- Next.js 14 App Router
+- React 18 and TypeScript
+- Tailwind CSS
+- MapLibre GL with OpenStreetMap raster tiles
+- Neon serverless Postgres with PostGIS, optional but recommended
+- Provider-agnostic AI calls through `fetch`, with no AI SDK dependency
 
-### 1. Prerequisites
-- Node.js 18+ and npm
+## Quick Start
 
-### 2. Install & run
+Prerequisites:
+
+- Node.js 18+
+- npm
+
+Install and run:
+
 ```bash
 git clone git@github.com:Rutvij-1/Vote-Vista.git
 cd Vote-Vista
 npm install
-npm run dev          # http://localhost:3000
-```
-For a production build: `npm run build && npm run start`.
-
-### 3. (Optional) Enable live AI output
-Copy the example env file and add one API key:
-```bash
 cp .env.example .env.local
+npm run dev
 ```
-The app auto-detects the provider. The cheapest good option is **Google Gemini Flash**
-(see "Generating a Gemini API token" below). Because Gemini exposes an
-OpenAI-compatible endpoint, it works with the existing code via env vars:
+
+Open `http://localhost:3000`.
+
+Production build:
+
+```bash
+npm run build
+npm run start
+```
+
+## Configuration
+
+All environment variables are optional for the UI to start, but data availability
+depends on the mode you choose.
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Enables Neon/Postgres reads, PostGIS map queries, AI insight cache, and rate limits. |
+| `OPENAI_API_KEY` | Enables OpenAI or OpenAI-compatible LLM output. |
+| `OPENAI_BASE_URL` | Optional OpenAI-compatible base URL, for example Gemini. |
+| `OPENAI_MODEL` | Optional OpenAI-compatible model name. Defaults to `gpt-4o-mini`. |
+| `ANTHROPIC_API_KEY` | Enables Anthropic LLM output when no OpenAI key is set. |
+| `ANTHROPIC_MODEL` | Optional Anthropic model name. |
+| `TAVILY_API_KEY` | Enables live web search for candidate and MLA research. |
+
+Gemini example:
+
 ```bash
 OPENAI_API_KEY=<your-gemini-key>
 OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
 OPENAI_MODEL=gemini-2.5-flash-lite
 ```
-Alternatively set `OPENAI_API_KEY` (OpenAI) or `ANTHROPIC_API_KEY` (Anthropic) directly.
 
-**Optional — live web search for the research agent (Feature 5):** set a
-`TAVILY_API_KEY` (free tier: 1,000 searches/month at https://app.tavily.com).
-Without it, the research agent falls back to the curated files in `sources/`.
+Never commit `.env.local`; it is ignored by git.
 
-### Generating a Gemini API token
-1. Go to **Google AI Studio** → https://aistudio.google.com/apikey
-2. Sign in with a Google account.
-3. Click **"Create API key"** → choose (or create) a Google Cloud project.
-4. Copy the key (starts with `AIza...`) into `.env.local` as `OPENAI_API_KEY`.
-5. Restart the dev server. The free tier (~1,000 requests/day) covers POC usage at no cost.
+## Data Modes
 
-> Never commit `.env.local` — it is already in `.gitignore`.
+VoteVista supports two data modes:
 
-### App structure
+- Database mode: set `DATABASE_URL`. This is the recommended mode. The app reads
+  constituencies, candidates, winners, source documents, cached AI insights, and
+  rate-limit counters from Postgres/PostGIS.
+- Local fallback mode: leave `DATABASE_URL` unset. The app reads local
+  `data/*.json`, `data/*.geojson`, and `sources/*` files. Most gathered data
+  files are intentionally ignored by git, so a fresh clone may need local seed
+  files restored or a configured database.
+
+Seed a configured database:
+
+```bash
+npm run db:seed
+npm run db:seed:constituencies
+npm run db:seed:candidates
+npm run db:backfill:votes
 ```
+
+`npm run db:seed` applies `db/schema.sql` and loads the curated AC 161 dataset.
+The other seed scripts extend the database with Bengaluru boundaries, candidates,
+and vote backfills where available.
+
+## Project Layout
+
+```text
 app/
-  page.tsx                 # loads data (server) → renders Portal
-  layout.tsx, globals.css
-  api/summary/route.ts     # candidate AI profile
-  api/overview/route.ts    # top-candidates overview
-  api/research/route.ts    # MLA research agent
-components/                # Portal, MapView, CandidateDetail, ResearchPanel
-lib/                       # data loaders, db client, AI provider, search, types
-db/schema.sql              # Postgres + PostGIS schema
-scripts/seed.mjs           # applies schema + loads data into the DB
+  page.tsx                  Server entry point and initial constituency load
+  api/                      Route handlers for map, location, and AI features
+components/
+  Portal.tsx                Main client UI
+  MapView.tsx               MapLibre map and viewport boundary loading
+  CandidateDetail.tsx       Candidate drawer and candidate AI research
+  ResearchPanel.tsx         MLA research modal
+lib/
+  data.ts                   DB-first data access with local file fallback
+  ai.ts                     OpenAI-compatible and Anthropic text generation
+  search.ts                 Tavily web search helper
+  insights.ts               AI cache orchestration
+  ratelimit.ts              DB-backed AI generation rate limits
+db/schema.sql               Postgres/PostGIS schema
+scripts/                    Database seed and migration scripts
+docs/                       Detailed project documentation
 ```
 
-### Data store
-The gathered electoral data lives in a **Neon Postgres (PostGIS)** database — the
-source of truth. Set `DATABASE_URL` and run `npm run db:seed` to populate it.
-If `DATABASE_URL` is unset, the app falls back to local JSON/text files (see below).
+## Documentation
 
-> The raw `data/` and `sources/` files are **not committed** (they are local
-> inputs for `npm run db:seed`); only `data/location_meta.json` (app config) is
-> tracked. Re-create the DB any time with `npm run db:seed`.
+- `docs/ARCHITECTURE.md` explains the app flow, frontend boundaries, data layer,
+  AI flow, caching, and rate limiting.
+- `docs/DATA_AND_DATABASE.md` explains local files, database schema, seed order,
+  provenance, and data caveats.
+- `docs/API.md` documents the route handlers and request/response shapes.
+- `docs/AI_CONFIGURATION.md` explains providers, fallback behavior, live search,
+  cache TTL, and cost controls.
 
----
+## Scripts
 
-## Dataset
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Next.js dev server. |
+| `npm run build` | Build the production app. |
+| `npm run start` | Start the production server. |
+| `npm run lint` | Run Next.js linting. |
+| `npm run db:seed` | Apply schema and seed curated AC 161 data. |
+| `npm run db:seed:constituencies` | Upsert Bengaluru constituency boundaries. |
+| `npm run db:seed:candidates` | Load Bengaluru candidate records from local data. |
+| `npm run db:backfill:votes` | Backfill vote counts and vote shares from local vote data. |
+| `npm run db:migrate:insights` | Create AI insight cache and rate-limit tables. |
 
-> **Election scope:** 2023 Karnataka Legislative Assembly (MLA race only).
-> **Constituency targeted by this dataset:** C.V. Raman Nagar (SC), AC 161.
-> ⚠️ See "Boundary discrepancy" below — the house coordinates actually fall in
-> **Shanti Nagar (AC 163)** per the official boundary data. Confirm before building on this.
+## Dataset Notes
 
-## Directory structure
-
-```
-Vote-Vista/
-├── README.md                  # this file
-├── data/
-│   ├── location_meta.json     # house coords + boundary point-in-polygon check
-│   ├── constituency.geojson   # CV Raman Nagar (AC 161) boundary polygon (LGD)
-│   ├── candidates.json        # all 2023 candidates + assets/criminal/education
-│   └── winning_party.json     # winner (BJP / S. Raghu) + pointers to source text
-└── sources/                   # raw text that feeds the AI features
-    ├── winner_affidavit.txt              # → candidate AI summary (Feature 3)
-    ├── winner_mla_news.json              # → research agent (Feature 5)
-    └── winner_party_manifesto_2023.txt   # → promise-vs-result (Feature 5)
-```
-
-## Feature → data mapping
-
-| App feature | Backed by |
-|---|---|
-| 1. Map + list view | `data/constituency.geojson` |
-| 2. Candidate list, mark winning party | `data/candidates.json` (`is_seat_winner`) |
-| 3. Per-candidate links + AI summary | `candidates.json` + `sources/winner_affidavit.txt` |
-| 4. Summary of popular candidates | `candidates.json` (vote_share_pct) |
-| 5. On-demand research agent | `sources/winner_mla_news.json` + `winner_party_manifesto_2023.txt` |
-
-## Data sources & provenance
-
-- **Results / candidate list:** Election Commission of India —
-  https://results.eci.gov.in/ResultAcGenMay2023/ConstituencywiseS10161.htm?ac=161
-- **Assets, liabilities, criminal cases, education:** ADR / MyNeta —
-  https://myneta.info/Karnataka2023/index.php?action=show_candidates&constituency_id=828
-- **Constituency boundary:** LGD Assembly Constituencies via
-  `yashveeeeeeer/india-geodata` (CC0/CC-BY). Single feature extracted for AC 161.
-- **MLA news / manifesto:** linked per-item inside the `sources/` files.
-
-All MyNeta data is **self-declared affidavit** data (archived); current status may differ.
-
-## ⚠️ Boundary discrepancy (must resolve)
-
-A point-in-polygon test of the house (`12.9684577, 77.6387454`) against the official
-LGD boundaries shows the house inside **Shanti Nagar (AC 163)**, ~700m outside the
-southern edge of **C.V. Raman Nagar (AC 161)**. The house is near the CV Raman Nagar /
-Shanti Nagar / Mahadevapura junction, and LGD polygons are simplified.
-
-This dataset currently describes **AC 161 (CV Raman Nagar)** per explicit user
-confirmation. If the intended target is the constituency that actually contains the
-house, the candidate/winner/source data must be re-gathered for **AC 163 (Shanti Nagar)**.
-Verify on https://voters.eci.gov.in (enter the address/EPIC) before proceeding.
-
-## Numeric conventions
-- All monetary fields (`assets_total_inr`, `liabilities_inr`) are in **INR (rupees)**, integer.
-- `null` = not declared / not available in source.
+- Election scope: 2023 Karnataka Legislative Assembly.
+- Curated constituency: C.V. Raman Nagar (SC), AC 161.
+- Broader map scope: Bengaluru assembly constituencies when the DB is seeded.
+- Candidate affidavit data comes from ADR/MyNeta and is self-declared.
+- Result and vote data comes from public election result sources where available.
+- Boundary data comes from public LGD-derived assembly constituency geometries.
+- Monetary fields such as `assets_total_inr` and `liabilities_inr` are stored as
+  integer INR amounts.
+- `null` means not declared or not available in the source.
