@@ -12,7 +12,9 @@
     "db:seed:constituencies": "node --env-file=.env.local scripts/seed-constituencies.mjs",
     "db:seed:candidates": "node --env-file=.env.local scripts/seed-bangalore-candidates.mjs",
     "db:backfill:votes": "node --env-file=.env.local scripts/backfill-votes.mjs",
-    "db:migrate:insights": "node --env-file=.env.local scripts/migrate-insights.mjs"
+    "db:migrate:insights": "node --env-file=.env.local scripts/migrate-insights.mjs",
+    "scrape:myneta": "node scripts/scrape-myneta.mjs",
+    "refresh:monthly": "node --env-file=.env.local scripts/monthly-refresh.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
