@@ -43,17 +43,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Smoke-test scrape (manual run with ac_limit)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ac_limit != '' }}
+        # Scrape only; does NOT touch the DB. Safe to run before DATABASE_URL
+        # is configured, useful for validating the workflow + scraper end-to-end.
+        run: node scripts/scrape-myneta.mjs --limit=${{ inputs.ac_limit }} --output=data/bangalore_candidates.json
+
       - name: Verify DATABASE_URL is set
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.ac_limit == '' }}
         run: |
           if [ -z "${DATABASE_URL}" ]; then
             echo "::error::DATABASE_URL repo secret is not set. Add it via 'gh secret set DATABASE_URL' or the repo settings."
             exit 1
           fi
           echo "DATABASE_URL is configured (length: ${#DATABASE_URL})"
-
-      - name: Smoke-test scrape (manual run with ac_limit)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ac_limit != '' }}
-        run: node scripts/scrape-myneta.mjs --limit=${{ inputs.ac_limit }} --output=data/bangalore_candidates.json
 
       - name: Monthly refresh (scheduled / full manual run)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.ac_limit == '' }}
